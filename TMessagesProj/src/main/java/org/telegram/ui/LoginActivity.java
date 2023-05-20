@@ -819,28 +819,28 @@ public class LoginActivity extends BaseFragment {
             fragmentView.requestLayout();
         }
         setPage(VIEW_LDAP_LOGIN_INPUT, false, null, true);
-//        try {
-//            if (currentViewNum >= VIEW_CODE_MESSAGE && currentViewNum <= VIEW_CODE_CALL && views[currentViewNum] instanceof LoginActivitySmsView) {
-//                int time = ((LoginActivitySmsView) views[currentViewNum]).openTime;
-//                if (time != 0 && Math.abs(System.currentTimeMillis() / 1000 - time) >= 24 * 60 * 60) {
-//                    views[currentViewNum].onBackPressed(true);
-//                    setPage(VIEW_PHONE_INPUT, false, null, true);
-//                }
-//            }
-//        } catch (Exception e) {
-//            FileLog.e(e);
-//        }
-//        if (currentViewNum == VIEW_PHONE_INPUT && !needRequestPermissions) {
-//            SlideView view = views[currentViewNum];
-//            if (view != null) {
-//                view.onShow();
-//            }
-//        }
-//
-//        if (isCustomKeyboardVisible()) {
-//            AndroidUtilities.hideKeyboard(fragmentView);
-//            AndroidUtilities.requestAltFocusable(getParentActivity(), classGuid);
-//        }
+        try {
+            if (currentViewNum >= VIEW_CODE_MESSAGE && currentViewNum <= VIEW_CODE_CALL && views[currentViewNum] instanceof LoginActivitySmsView) {
+                int time = ((LoginActivitySmsView) views[currentViewNum]).openTime;
+                if (time != 0 && Math.abs(System.currentTimeMillis() / 1000 - time) >= 24 * 60 * 60) {
+                    views[currentViewNum].onBackPressed(true);
+                    setPage(VIEW_LDAP_LOGIN_INPUT, false, null, true);
+                }
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        if (currentViewNum == VIEW_LDAP_LOGIN_INPUT && !needRequestPermissions) {
+            SlideView view = views[currentViewNum];
+            if (view != null) {
+                view.onShow();
+            }
+        }
+
+        if (isCustomKeyboardVisible()) {
+            AndroidUtilities.hideKeyboard(fragmentView);
+            AndroidUtilities.requestAltFocusable(getParentActivity(), classGuid);
+        }
     }
 
     @Override
@@ -976,7 +976,8 @@ public class LoginActivity extends BaseFragment {
 
     @Override
     public boolean onBackPressed() {
-        if (currentViewNum == VIEW_PHONE_INPUT || activityMode == MODE_CHANGE_LOGIN_EMAIL && currentViewNum == VIEW_ADD_EMAIL) {
+        if (currentViewNum == VIEW_LDAP_LOGIN_INPUT ||
+                currentViewNum == VIEW_PHONE_INPUT || activityMode == MODE_CHANGE_LOGIN_EMAIL && currentViewNum == VIEW_ADD_EMAIL) {
             for (int a = 0; a < views.length; a++) {
                 if (views[a] != null) {
                     views[a].onDestroyActivity();
@@ -1451,14 +1452,15 @@ public class LoginActivity extends BaseFragment {
     }
 
     public void setPage(@ViewNumber int page, boolean animated, Bundle params, boolean back) {
-        boolean needFloatingButton = page == VIEW_PHONE_INPUT || page == VIEW_REGISTER || page == VIEW_PASSWORD ||
+        boolean needFloatingButton = page == VIEW_LDAP_LOGIN_INPUT ||
+                page == VIEW_PHONE_INPUT || page == VIEW_REGISTER || page == VIEW_PASSWORD ||
                 page == VIEW_NEW_PASSWORD_STAGE_1 || page == VIEW_NEW_PASSWORD_STAGE_2 || page == VIEW_ADD_EMAIL;
         if (page == currentViewNum) {
             animated = false;
         }
 
         if (needFloatingButton) {
-            if (page == VIEW_PHONE_INPUT) {
+            if (page == VIEW_LDAP_LOGIN_INPUT || page == VIEW_PHONE_INPUT) {
                 checkPermissions = true;
                 checkShowPermissions = true;
             }
@@ -6747,6 +6749,7 @@ public class LoginActivity extends BaseFragment {
         private EditTextBoldCursor[] codeField;
         private TextView titleTextView;
         private TextView confirmTextView;
+        private TextView cancelButton;
         private ImageView passwordButton;
 
         private String emailCode;
@@ -6909,6 +6912,7 @@ public class LoginActivity extends BaseFragment {
             for (OutlineTextContainerView outlineField : outlineFields) {
                 outlineField.updateColor();
             }
+            cancelButton.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText4));
             if (passwordButton != null) {
                 passwordButton.setColorFilter(Theme.getColor(isPasswordVisible ? Theme.key_windowBackgroundWhiteInputFieldActivated : Theme.key_windowBackgroundWhiteHintText));
                 passwordButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1));
@@ -6986,8 +6990,89 @@ public class LoginActivity extends BaseFragment {
             } else {
                 nextPressed = true;
                 needShowProgress(0);
-//                recoverPassword(newPassword, code);
+                recoverPassword(newPassword, code);
             }
+        }
+
+        private void recoverPassword(String password, String hint) {
+            TLRPC.TL_auth_recoverPassword req = new TLRPC.TL_auth_recoverPassword();
+            req.code = emailCode;
+            if (!TextUtils.isEmpty(password)) {
+                req.flags |= 1;
+                req.new_settings = new TLRPC.TL_account_passwordInputSettings();
+                req.new_settings.flags |= 1;
+                req.new_settings.hint = hint != null ? hint : "";
+                req.new_settings.new_algo = currentPassword.new_algo;
+            }
+            Utilities.globalQueue.postRunnable(() -> {
+                byte[] newPasswordBytes;
+                if (password != null) {
+                    newPasswordBytes = AndroidUtilities.getStringBytes(password);
+                } else {
+                    newPasswordBytes = null;
+                }
+
+                RequestDelegate requestDelegate = (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                    if (error != null && ("SRP_ID_INVALID".equals(error.text) || "NEW_SALT_INVALID".equals(error.text))) {
+                        TLRPC.TL_account_getPassword getPasswordReq = new TLRPC.TL_account_getPassword();
+                        ConnectionsManager.getInstance(currentAccount).sendRequest(getPasswordReq, (response2, error2) -> AndroidUtilities.runOnUIThread(() -> {
+                            if (error2 == null) {
+                                currentPassword = (TLRPC.account_Password) response2;
+                                TwoStepVerificationActivity.initPasswordNewAlgo(currentPassword);
+                                recoverPassword(password, hint);
+                            }
+                        }), ConnectionsManager.RequestFlagWithoutLogin);
+                        return;
+                    }
+                    needHideProgress(false);
+                    if (response instanceof TLRPC.auth_Authorization) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+                        builder.setPositiveButton(LocaleController.getString(R.string.Continue), (dialogInterface, i) -> onAuthSuccess((TLRPC.TL_auth_authorization) response));
+                        if (TextUtils.isEmpty(password)) {
+                            builder.setMessage(LocaleController.getString(R.string.YourPasswordReset));
+                        } else {
+                            builder.setMessage(LocaleController.getString(R.string.YourPasswordChangedSuccessText));
+                        }
+                        builder.setTitle(LocaleController.getString(R.string.TwoStepVerificationTitle));
+                        Dialog dialog = showDialog(builder.create());
+                        if (dialog != null) {
+                            dialog.setCanceledOnTouchOutside(false);
+                            dialog.setCancelable(false);
+                        }
+                    } else if (error != null) {
+                        nextPressed = false;
+                        if (error.text.startsWith("FLOOD_WAIT")) {
+                            int time = Utilities.parseInt(error.text);
+                            String timeString;
+                            if (time < 60) {
+                                timeString = LocaleController.formatPluralString("Seconds", time);
+                            } else {
+                                timeString = LocaleController.formatPluralString("Minutes", time / 60);
+                            }
+                            needShowAlert(LocaleController.getString(R.string.RestorePasswordNoEmailTitle), LocaleController.formatString("FloodWaitTime", R.string.FloodWaitTime, timeString));
+                        } else {
+                            needShowAlert(LocaleController.getString(R.string.RestorePasswordNoEmailTitle), error.text);
+                        }
+                    }
+                });
+
+                if (currentPassword.new_algo instanceof TLRPC.TL_passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow) {
+                    if (password != null) {
+                        TLRPC.TL_passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow algo = (TLRPC.TL_passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow) currentPassword.new_algo;
+                        req.new_settings.new_password_hash = SRPHelper.getVBytes(newPasswordBytes, algo);
+                        if (req.new_settings.new_password_hash == null) {
+                            TLRPC.TL_error error = new TLRPC.TL_error();
+                            error.text = "ALGO_INVALID";
+                            requestDelegate.run(null, error);
+                        }
+                    }
+                    ConnectionsManager.getInstance(currentAccount).sendRequest(req, requestDelegate, ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin);
+                } else {
+                    TLRPC.TL_error error = new TLRPC.TL_error();
+                    error.text = "PASSWORD_HASH_INVALID";
+                    requestDelegate.run(null, error);
+                }
+            });
         }
 
         @Override
@@ -7855,7 +7940,7 @@ public class LoginActivity extends BaseFragment {
                 builder.setMessage(LocaleController.getString("AreYouSureRegistration", R.string.AreYouSureRegistration));
                 builder.setNegativeButton(LocaleController.getString("Stop", R.string.Stop), (dialogInterface, i) -> {
                     onBackPressed(true);
-                    setPage(VIEW_PHONE_INPUT, true, null, true);
+                    setPage(VIEW_LDAP_LOGIN_INPUT, true, null, true);
                     hidePrivacyView();
                 });
                 builder.setPositiveButton(LocaleController.getString("Continue", R.string.Continue), null);
