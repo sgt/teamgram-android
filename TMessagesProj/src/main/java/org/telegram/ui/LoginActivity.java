@@ -6781,7 +6781,7 @@ public class LoginActivity extends BaseFragment {
         private final EditTextBoldCursor[] textFields;
         private final TextView titleTextView;
         private final TextView confirmTextView;
-//        private final ImageView passwordButton;
+        private final ImageView passwordButton;
 
         private Bundle currentParams;
 
@@ -6836,59 +6836,59 @@ public class LoginActivity extends BaseFragment {
             usernameField.setInputType(InputType.TYPE_CLASS_TEXT);
             passwordField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
             passwordField.setTransformationMethod(PasswordTransformationMethod.getInstance());
-//            passwordField.addTextChangedListener(new TextWatcher() {
-//                @Override
-//                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-//                }
-//
-//                @Override
-//                public void onTextChanged(CharSequence s, int start, int before, int count) {
-//                }
-//
-//                @Override
-//                public void afterTextChanged(Editable s) {
-//                    if (passwordButton.getVisibility() != VISIBLE && !TextUtils.isEmpty(s)) {
-//                        if (isPasswordVisible) {
-//                            passwordButton.callOnClick();
-//                        }
-//                        AndroidUtilities.updateViewVisibilityAnimated(passwordButton, true, 0.1f, true);
-//                    } else if (passwordButton.getVisibility() != GONE && TextUtils.isEmpty(s)) {
-//                        AndroidUtilities.updateViewVisibilityAnimated(passwordButton, false, 0.1f, true);
-//                    }
-//                }
-//            });
+            passwordField.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
+                }
+
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (passwordButton.getVisibility() != VISIBLE && !TextUtils.isEmpty(s)) {
+                        if (isPasswordVisible) {
+                            passwordButton.callOnClick();
+                        }
+                        AndroidUtilities.updateViewVisibilityAnimated(passwordButton, true, 0.1f, true);
+                    } else if (passwordButton.getVisibility() != GONE && TextUtils.isEmpty(s)) {
+                        AndroidUtilities.updateViewVisibilityAnimated(passwordButton, false, 0.1f, true);
+                    }
+                }
+            });
 
             usernameField.setOnFocusChangeListener((v, hasFocus) -> usernameOutline.animateSelection(hasFocus ? 1f : 0f));
             passwordField.setOnFocusChangeListener((v, hasFocus) -> passwordOutline.animateSelection(hasFocus ? 1f : 0f));
 
             // dealing with password button
-//            LinearLayout linearLayout = new LinearLayout(context);
-//            linearLayout.setOrientation(HORIZONTAL);
-//            linearLayout.setGravity(Gravity.CENTER_VERTICAL);
-//            linearLayout.addView(passwordField, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
-//
-//            passwordButton = new ImageView(context);
-//            passwordButton.setImageResource(R.drawable.msg_message);
-//            AndroidUtilities.updateViewVisibilityAnimated(passwordButton, true, 0.1f, false);
-//            passwordButton.setOnClickListener(v -> {
-//                isPasswordVisible = !isPasswordVisible;
-//
-//                int selectionStart = passwordField.getSelectionStart(), selectionEnd = passwordField.getSelectionEnd();
-//                passwordField.setInputType(InputType.TYPE_CLASS_TEXT | (isPasswordVisible ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : InputType.TYPE_TEXT_VARIATION_PASSWORD));
-//                passwordField.setSelection(selectionStart, selectionEnd);
-//
-//                passwordButton.setTag(isPasswordVisible);
-//                passwordButton.setColorFilter(Theme.getColor(isPasswordVisible ? Theme.key_windowBackgroundWhiteInputFieldActivated : Theme.key_windowBackgroundWhiteHintText));
-//            });
-//            linearLayout.addView(passwordButton, LayoutHelper.createLinearRelatively(24, 24, 0, 0, 0, 14, 0));
-//            passwordOutline.addView(linearLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            LinearLayout linearLayout = new LinearLayout(context);
+            linearLayout.setOrientation(HORIZONTAL);
+            linearLayout.setGravity(Gravity.CENTER_VERTICAL);
+            linearLayout.addView(passwordField, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f));
+
+            passwordButton = new ImageView(context);
+            passwordButton.setImageResource(R.drawable.msg_message);
+            AndroidUtilities.updateViewVisibilityAnimated(passwordButton, true, 0.1f, false);
+            passwordButton.setOnClickListener(v -> {
+                isPasswordVisible = !isPasswordVisible;
+
+                int selectionStart = passwordField.getSelectionStart(), selectionEnd = passwordField.getSelectionEnd();
+                passwordField.setInputType(InputType.TYPE_CLASS_TEXT | (isPasswordVisible ? InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD : InputType.TYPE_TEXT_VARIATION_PASSWORD));
+                passwordField.setSelection(selectionStart, selectionEnd);
+
+                passwordButton.setTag(isPasswordVisible);
+                passwordButton.setColorFilter(Theme.getColor(isPasswordVisible ? Theme.key_windowBackgroundWhiteInputFieldActivated : Theme.key_windowBackgroundWhiteHintText));
+            });
+            linearLayout.addView(passwordButton, LayoutHelper.createLinearRelatively(24, 24, 0, 0, 0, 14, 0));
 
             usernameOutline.attachEditText(usernameField);
             passwordOutline.attachEditText(passwordField);
 
             usernameOutline.addView(usernameField, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+            passwordOutline.addView(linearLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             // TODO only when passwordButton is disabled
-            passwordOutline.addView(passwordField, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+//            passwordOutline.addView(passwordField, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
             for (OutlineTextContainerView outlineField : outlineFields) {
                 addView(outlineField, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 16, 16, 16, 0));
@@ -6920,10 +6920,10 @@ public class LoginActivity extends BaseFragment {
             for (OutlineTextContainerView outlineField : outlineFields) {
                 outlineField.updateColor();
             }
-//            if (passwordButton != null) {
-//                passwordButton.setColorFilter(Theme.getColor(isPasswordVisible ? Theme.key_windowBackgroundWhiteInputFieldActivated : Theme.key_windowBackgroundWhiteHintText));
-//                passwordButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1));
-//            }
+            if (passwordButton != null) {
+                passwordButton.setColorFilter(Theme.getColor(isPasswordVisible ? Theme.key_windowBackgroundWhiteInputFieldActivated : Theme.key_windowBackgroundWhiteHintText));
+                passwordButton.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), 1));
+            }
         }
 
         @Override
