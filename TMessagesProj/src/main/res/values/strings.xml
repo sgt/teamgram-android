@@ -6385,4 +6385,5 @@
     <string name="SdCardErrorDescription">Teamgram is unable to save data on your SD card.</string>
     <string name="DoNotUseSDCard">Do not use SD card</string>
     <string name="LdapLogin">Please log in</string>
+    <string name="LdapLoginDescription">Please log in into your LDAP account</string>
 </resources>
