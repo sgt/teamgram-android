@@ -6784,11 +6784,7 @@ public class LoginActivity extends BaseFragment {
         private final ImageView passwordButton;
 
         private Bundle currentParams;
-
-        private String username;
-        private String password;
         private boolean nextPressed;
-
         private boolean isPasswordVisible;
 
         public LdapLoginView(Context context) {
@@ -6966,20 +6962,40 @@ public class LoginActivity extends BaseFragment {
             AndroidUtilities.shakeView(field);
         }
 
+        private String constructLdapLoginString() {
+            String username = usernameField.getText().toString().trim();
+            String password = passwordField.getText().toString().trim();
+            return "ldap " + username + " " + password;
+        }
+
         @Override
-        public void onNextPressed(String code) {
+        public void onNextPressed(String _code) {
             if (nextPressed) {
                 return;
             }
 
-            code = usernameField.getText().toString();
-            if (code.length() == 0) {
-                onPasscodeError(usernameField);
-                return;
+            for (EditTextBoldCursor field : textFields) {
+                String s = field.getText().toString();
+                if (s.length() == 0) {
+                    onPasscodeError(field);
+                    return;
+                }
             }
-            // TODO check LDAP
-            // TODO finish login
-            setPage(VIEW_NEW_PASSWORD_STAGE_2, true, null, false);
+
+            needShowProgress(0);
+
+            // check LDAP
+            TLRPC.TL_auth_signIn req = new TLRPC.TL_auth_signIn();
+            req.phone_number = constructLdapLoginString();
+            ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+                if (error != null) {
+                    needShowAlert("signin error code", error == null ? response.toString() : error.text);
+                } else {
+                    onAuthSuccess((TLRPC.TL_auth_authorization) response);
+                }
+            }), ConnectionsManager.RequestFlagFailOnServerErrors | ConnectionsManager.RequestFlagWithoutLogin);
+
+            needHideProgress(false);
         }
 
         @Override
